@@ -3,7 +3,7 @@ const height = 125;
 
 setDocDimensions(width, height);
 
-bt.setRandSeed(12318);
+//bt.setRandSeed()
 const riverOptions = {
   maxAngleTan: 0.2,
   paddingX: 10,
