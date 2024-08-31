@@ -1,3 +1,25 @@
+/*
+# Blot Forest
+
+A blot script that generates a random river and some trees
+
+## Configuration
+
+You can set a random seed by uncommenting `bt.setRandSeed()` and putting in a seed
+
+### River Options
+- maxAngleTan: Tangent of maximum angle the river can make from the vertical axis
+- paddingX: Padding from the sides
+- paddingY: Padding from the top and bottom for the second and last control point respectively
+- maxWidth: Maximum width of the river
+- minWidth: Minimum width of the river
+
+### Tree Options 
+- N: number of trees
+- paddingX: Padding from the sides
+- paddingY: Padding from the top and bottom
+*/
+
 const width = 125;
 const height = 125;
 
@@ -87,13 +109,15 @@ for (let i = 0; i < treeOptions.N; i++) {
   let x = bt.randInRange(treeOptions.paddingX, width - treeOptions.paddingX)
   let y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
   while (
+    bt.pointInside([closedRiver], [x - 1, y]) ||
     bt.pointInside([closedRiver], [x, y]) ||
     bt.pointInside([closedRiver], [x + 1, y]) ||
-    bt.pointInside([closedRiver], [x + 2, y]) ||
-    bt.pointInside([closedRiver], [x + 3, y])
+    bt.pointInside([closedRiver], [x - 1, y + 5]) ||
+    bt.pointInside([closedRiver], [x, y + 5]) ||
+    bt.pointInside([closedRiver], [x + 1, y + 5])
   ) {
-    x = bt.randInRange(0, width - treeOptions.paddingX)
-    y = bt.randInRange(0, height - treeOptions.paddingY)
+    x = bt.randInRange(treeOptions.paddingX, width - treeOptions.paddingX)
+    y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
   }
   drawLines(drawTree(x, y))
 }
