@@ -45,6 +45,9 @@ const fishOptions = {
   minSize: 0.75,
   angleVariation: 20
 }
+const houseOptions = {
+  padding: 8
+}
 
 function drawRiver() {
   const river = [
@@ -152,7 +155,7 @@ for (let i = 0; i < fishOptions.N; i++) {
 const closedRiver = [...river[0],
 ...river[1].reverse(),
 river[0][0]
-]
+]/*
 for (let i = 0; i < treeOptions.N; i++) {
   let x = bt.randInRange(treeOptions.paddingX, width - treeOptions.paddingX)
   let y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
@@ -168,4 +171,114 @@ for (let i = 0; i < treeOptions.N; i++) {
     y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
   }
   drawLines(drawTree(x, y))
+}*/
+
+class Queue {
+  constructor() {
+    this._elements = [];
+    this._offset = 0;
+  }
+  enqueue(element) {
+    this._elements.push(element);
+    return this;
+  }
+  dequeue() {
+    if (this.size() === 0) return null;
+
+    const first = this.front();
+    this._offset += 1;
+
+    if (this._offset * 2 < this._elements.length) return first;
+
+    this._elements = this._elements.slice(this._offset);
+    this._offset = 0;
+    return first;
+  }
+  front() {
+    return this.size() > 0 ? this._elements[this._offset] : null;
+  }
+  back() {
+    return this.size() > 0 ? this._elements[this._elements.length - 1] : null;
+  }
+  size() {
+    return this._elements.length - this._offset;
+  }
+  isEmpty() {
+    return this.size() === 0;
+  }
 }
+
+function drawHouse(pos) {
+  const turtle = new bt.Turtle()
+    .down()
+    .left(90)
+  for (let i = 0; i < 4; i++) {
+    turtle.forward(3)
+    turtle.right(90)
+  }
+  turtle
+    .forward(3)
+    .right(30)
+    .forward(3)
+    .right(120)
+    .forward(3)
+  if(bt.rand()<0.5){
+    turtle
+      .forward(-1.5)
+      .setAngle(90)
+      .forward(1)
+      .right(90)
+      .forward(0.5)
+      .right(90)
+      .forward(1+0.5*Math.sqrt(3))
+  }
+  return bt.translate(turtle.lines(), pos)
+}
+
+let size = 1
+const queue = new Queue()
+const visited = []
+const setVisited = ([x,y])=>visited[x+(width+1)*y]=true
+const getVisited = ([x,y])=>visited[x+(width+1)*y]
+
+function randWithCond(min,max,cond){
+  let x = bt.randIntInRange(min,max)
+  let y = bt.randIntInRange(min,max)
+  while(!cond(x,y)){
+    x = bt.randIntInRange(min,max)
+    y = bt.randIntInRange(min,max)
+  }
+  return [x,y]
+}
+function nearRiver([x,y]){
+  for(let ox=-6;ox<=6;ox++){
+    for(let oy=-6;oy<=6;oy++){
+      if(bt.pointInside([closedRiver], [x + ox, y + oy])) return true
+    }
+  }
+  return false
+}
+const firstHouse = randWithCond(houseOptions.padding,width-houseOptions.padding,(x,y)=>!nearRiver([x,y]))
+queue.enqueue(firstHouse)
+setVisited(firstHouse)
+
+while (!queue.isEmpty()) {
+  const [x, y] = queue.dequeue()
+  console.log([x,y])
+  if(bt.rand()<0.6){
+    drawLines(drawHouse([x, y]))
+    size++
+  } else if(bt.rand()<0.4) drawLines(drawTree(x,y))
+  for (let ox = -5; ox <= 5; ox+=5) {
+    if (x + ox < houseOptions.padding || x + ox > width - houseOptions.padding) continue
+    for (let oy = -8; oy <= 8; oy+=8) {
+      if (y + oy < houseOptions.padding || y + oy > height - houseOptions.padding) continue
+      if(bt.rand() < (size <= 15 ? 1 : 1/(size-15)) && !getVisited([x+ox,y+oy]) && !nearRiver([x+ox,y+oy])){
+        queue.enqueue([x+ox,y+oy])
+        setVisited([x+ox,y+oy])
+      }
+    }
+  }
+}
+
+
