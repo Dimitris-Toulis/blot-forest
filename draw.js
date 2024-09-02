@@ -31,12 +31,19 @@ const riverOptions = {
   paddingX: 10,
   paddingY: 5,
   maxWidth: 7,
-  minWidth: 1
+  minWidth: 2
 }
 const treeOptions = {
   N: 40,
   paddingX: 5,
   paddingY: 15
+}
+const fishOptions = {
+  N: 10,
+  padding: 0.025,
+  maxSize: 1.5,
+  minSize: 0.75,
+  angleVariation: 20
 }
 
 function drawRiver() {
@@ -83,7 +90,7 @@ function drawTree(x, y) {
   const cutter1copy = cutter1.map(a => a.map(b => [...b]))
   const cutter2 = turtle.lines().filter((_, i) => i != 0 && (i - 1) % 2 == 0).map(a => a.map(b => [...b]))
   let finalLines = [turtle.lines()[0]]
-  finalLines = [...finalLines, ...bt.cover(cutter1, cutter2), ...bt.cover(cutter2,cutter1copy)]
+  finalLines = [...finalLines, ...bt.cover(cutter1, cutter2), ...bt.cover(cutter2, cutter1copy)]
   bt.cover(finalLines, [ // hacky way to remove remaining inside bits
     [
       [0, 4],
@@ -99,11 +106,52 @@ function drawTree(x, y) {
   ])
   return bt.translate(finalLines, [x, y])
 }
+function drawFish([x, y], angle) {
+  const turtle = new bt.Turtle()
+    .down()
+    .setAngle(angle)
+    .right(90)
+    .up()
+    .forward(0.5)
+    .right(180)
+    .down()
+    .forward(1)
+    .right(120)
+    .forward(1)
+    .right(120)
+    .forward(1)
+    .up()
+    .right(180)
+    .forward(1)
+    .down()
+    .arc(-60, 2)
+    .up()
+    .arc(60, -2)
+    .down()
+    .right(60)
+    .arc(60, 2)
+    .up()
+    .setAngle(angle)
+    .forward(-0.6)
+    .right(90)
+    .down()
+    .arc(-360, -0.1)
+  return bt.scale(bt.translate(turtle.lines(), [x, y]), bt.randInRange(fishOptions.minSize, fishOptions.maxSize))
+}
+
 const river = drawRiver()
 drawLines(river)
+
+const riverCenter = river[0].map((p, i) => ([(p[0] + river[1][i][0]) / 2, (p[1] + river[1][i][1]) / 2]))
+let t = 0
+for (let i = 0; i < fishOptions.N; i++) {
+  t += bt.randInRange(fishOptions.padding, Math.min((1 - t) / (fishOptions.N - i), 1 - t - fishOptions.padding))
+  drawLines(drawFish(bt.getPoint([riverCenter], t), bt.getAngle([riverCenter], t) + bt.randInRange(-fishOptions.angleVariation, fishOptions.angleVariation)))
+}
+
 const closedRiver = [...river[0],
-  ...river[1].reverse(),
-  river[0][0]
+...river[1].reverse(),
+river[0][0]
 ]
 for (let i = 0; i < treeOptions.N; i++) {
   let x = bt.randInRange(treeOptions.paddingX, width - treeOptions.paddingX)
