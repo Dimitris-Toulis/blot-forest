@@ -26,44 +26,48 @@ const height = 125;
 setDocDimensions(width, height);
 
 //bt.setRandSeed()
-const riverOptions = {
-  maxAngleTan: 0.2,
-  paddingX: 10,
-  paddingY: 5,
-  maxWidth: 7,
-  minWidth: 2
-}
-const treeOptions = {
-  N: 40,
-  bushReplaceChance: 0.3,
-  paddingX: 5,
-  paddingY: 15
-}
-const fishOptions = {
-  N: 12,
-  padding: 0.025,
-  maxSize: 1.5,
-  minSize: 0.75,
-  angleVariation: 20
-}
-const houseOptions = {
-  padding: 8,
-  skipChance: 0.5,
-  treeReplaceChance: 0.4,
-  chimneyChance: 0.5,
-  windowChance: 0.2,
-  criticalSize: 15
-}
-const roadsOptions = {
-  dashSize: 0.25
+const options = {
+  river: {
+    maxAngleTan: 0.2,
+    paddingX: 10,
+    paddingY: 5,
+    maxWidth: 7,
+    minWidth: 2
+  },
+  tree: {
+    N: 40,
+    bushReplaceChance: 0.3,
+    paddingX: 5,
+    paddingY: 15,
+    riverDistance: 5
+  },
+  fish: {
+    N: 12,
+    padding: 0.025,
+    maxSize: 1.5,
+    minSize: 0.75,
+    angleVariation: 20
+  },
+  house: {
+    chimneyChance: 0.5,
+    windowChance: 0.2
+  },
+  city: {
+    criticalSize: 15,
+    firstRiverDistance: 10,
+    padding: 8,
+    riverDistance: 6,
+    treeReplaceChance: 0.4,
+    skipChance: 0.5,
+  },
+  road: {
+    dashSize: 0.25
+  }
 }
 
 function drawRiver() {
-  const river = [
-    [],
-    []
-  ];
-  const { maxAngleTan, paddingX, paddingY, maxWidth, minWidth } = riverOptions;
+  const river = [[], []];
+  const { maxAngleTan, paddingX, paddingY, maxWidth, minWidth } = options.river;
   let rw = bt.randInRange(minWidth, maxWidth)
   let x = bt.randInRange(paddingX + rw, width - paddingX - rw)
   river[0].push([x - rw, 0])
@@ -72,10 +76,9 @@ function drawRiver() {
     y += bt.randInRange(10, 22)
     if (y > height - paddingY) y = height
 
-    rw += bt.randInRange(rw - 1 <= minWidth ? minWidth - rw : -1, rw + 1 >= maxWidth ? maxWidth - rw : 1)
+    rw += bt.randInRange(Math.max(-1, minWidth - rw), Math.min(1, maxWidth - rw))
 
-    x += bt.randInRange(x - y * maxAngleTan < paddingX + rw ? -x + paddingX + rw : -y * maxAngleTan,
-      x + y * maxAngleTan > width - paddingX - rw ? width - x - paddingX - rw : y * maxAngleTan)
+    x += bt.randInRange(Math.max(-y * maxAngleTan, paddingX + rw - x), Math.min(y * maxAngleTan, width - paddingX - rw - x))
 
     river[0].push([x - rw, y])
     river[1].push([x + rw, y])
@@ -83,13 +86,12 @@ function drawRiver() {
   return [bt.catmullRom(river[0]), bt.catmullRom(river[1])]
 }
 
-function drawTreeOrBush(pos){
-  return bt.rand()<treeOptions.bushReplaceChance ? drawBush(pos) : drawTree(pos)
+function drawTreeOrBush(pos) {
+  return bt.rand() <= options.tree.bushReplaceChance ? drawBush(pos) : drawTree(pos)
 }
 
-function drawBush(pos){
-    const turtle = new bt.Turtle()
-    .down()
+function drawBush(pos) {
+  const turtle = new bt.Turtle()
   const curls = bt.randIntInRange(2, 3) * 2 + 1
   for (let i = 0; i < curls; i++) {
     turtle.arc(-360, -0.4)
@@ -150,15 +152,10 @@ function drawTree(pos) {
   ])
   return bt.translate(finalLines, pos)
 }
-function drawFish([x, y], angle) {
+
+function drawFish(pos, angle) {
   const turtle = new bt.Turtle()
-    .down()
-    .setAngle(angle)
-    .right(90)
-    .up()
-    .forward(0.5)
-    .right(180)
-    .down()
+    .setAngle(angle - 270)
     .forward(1)
     .right(120)
     .forward(1)
@@ -180,7 +177,7 @@ function drawFish([x, y], angle) {
     .right(90)
     .down()
     .arc(-360, -0.1)
-  return bt.scale(bt.translate(turtle.lines(), [x, y]), bt.randInRange(fishOptions.minSize, fishOptions.maxSize))
+  return bt.scale(bt.translate(turtle.lines(), pos), bt.randInRange(options.fish.minSize, options.fish.maxSize))
 }
 
 const river = drawRiver()
@@ -188,9 +185,9 @@ drawLines(river)
 
 const riverCenter = river[0].map((p, i) => ([(p[0] + river[1][i][0]) / 2, (p[1] + river[1][i][1]) / 2]))
 let t = 0
-for (let i = 0; i < fishOptions.N; i++) {
-  t += bt.randInRange(fishOptions.padding, Math.min((1 - t) / (fishOptions.N - i), 1 - t - fishOptions.padding))
-  drawLines(drawFish(bt.getPoint([riverCenter], t), bt.getAngle([riverCenter], t) + bt.randInRange(-fishOptions.angleVariation, fishOptions.angleVariation)))
+for (let i = 0; i < options.fish.N; i++) {
+  t += bt.randInRange(options.fish.padding, Math.min((1 - t) / (options.fish.N - i), 1 - t - options.fish.padding))
+  drawLines(drawFish(bt.getPoint([riverCenter], t), bt.getAngle([riverCenter], t) + bt.randInRange(-options.fish.angleVariation, options.fish.angleVariation)))
 }
 
 const closedRiver = [...river[0],
@@ -208,7 +205,7 @@ class Queue {
     return this;
   }
   dequeue() {
-    if (this.size() === 0) return null;
+    if (this.isEmpty()) return null;
 
     const first = this.front();
     this._offset += 1;
@@ -234,9 +231,7 @@ class Queue {
 }
 
 function drawHouse(pos) {
-  const turtle = new bt.Turtle()
-    .down()
-    .left(90)
+  const turtle = new bt.Turtle().left(90)
   for (let i = 0; i < 4; i++) {
     turtle.forward(3)
     turtle.right(90)
@@ -247,7 +242,7 @@ function drawHouse(pos) {
     .forward(3)
     .right(120)
     .forward(3)
-  if (bt.rand() < houseOptions.chimneyChance) {
+  if (bt.rand() <= options.house.chimneyChance) {
     turtle
       .forward(-1.5)
       .setAngle(90)
@@ -257,19 +252,19 @@ function drawHouse(pos) {
       .right(90)
       .forward(1 + 0.5 * Math.sqrt(3))
   }
-  if(bt.rand()<houseOptions.windowChance){
+  if (bt.rand() <= options.house.windowChance) {
     turtle
-      .jump([1,4])
+      .jump([1, 4])
       .setAngle(90)
-      .arc(360,-0.5)
+      .arc(360, -0.5)
       .right(90)
       .forward(1)
-      .jump([1.5,4.5])
+      .jump([1.5, 4.5])
       .setAngle(270)
       .forward(1)
   }
   turtle
-    .jump([1.25,0])
+    .jump([1.25, 0])
     .setAngle(90)
     .forward(1)
     .right(90)
@@ -282,8 +277,8 @@ function drawHouse(pos) {
 let size = 1
 const queue = new Queue()
 const visited = []
-const setVisited = ([x, y]) => visited[x + (width + 1) * y] = true
-const getVisited = ([x, y]) => visited[x + (width + 1) * y]
+const setVisited = ([x, y]) => visited[x + width * y] = true
+const getVisited = ([x, y]) => visited[x + width * y]
 
 function randWithCond(min, max, cond) {
   let x = bt.randIntInRange(min, max)
@@ -294,7 +289,7 @@ function randWithCond(min, max, cond) {
   }
   return [x, y]
 }
-function nearRiver([x, y], dist = 6) {
+function nearRiver([x, y], dist) {
   for (let ox = -dist; ox <= dist; ox++) {
     for (let oy = -dist; oy <= dist; oy++) {
       if (bt.pointInside([closedRiver], [x + ox, y + oy])) return true
@@ -302,7 +297,7 @@ function nearRiver([x, y], dist = 6) {
   }
   return false
 }
-const firstHouse = randWithCond(houseOptions.padding, width - houseOptions.padding, (x, y) => !nearRiver([x, y],10))
+const firstHouse = randWithCond(options.city.padding, width - options.city.padding, (x, y) => !nearRiver([x, y], options.city.firstRiverDistance))
 queue.enqueue(firstHouse)
 setVisited(firstHouse)
 
@@ -310,23 +305,19 @@ const cityPoints = []
 
 while (!queue.isEmpty()) {
   const [x, y] = queue.dequeue()
-  if (bt.rand() < (1-houseOptions.skipChance)) {
+  if (bt.rand() < (1 - options.city.skipChance)) {
     drawLines(drawHouse([x, y]))
     size++
-    cityPoints.push([x, y])
-    cityPoints.push([x + 3, y])
-    cityPoints.push([x, y + 6])
-    cityPoints.push([x + 3, y + 6])
-  } else if (bt.rand() < houseOptions.treeReplaceChance) {
-    drawLines(drawTreeOrBush([x+1, y]))
-    cityPoints.push([x, y])
-    cityPoints.push([x, y + 6])
+    cityPoints.push([x, y], [x + 3, y], [x, y + 6], [x + 3, y + 6])
+  } else if (bt.rand() < options.city.treeReplaceChance) {
+    drawLines(drawTreeOrBush([x + 1, y]))
+    cityPoints.push([x, y], [x, y + 6])
   }
   for (let ox = -5; ox <= 5; ox += 5) {
-    if (x + ox < houseOptions.padding || x + ox > width - houseOptions.padding) continue
+    if (x + ox < options.city.padding || x + ox > width - options.city.padding) continue
     for (let oy = -8; oy <= 8; oy += 8) {
-      if (y + oy < houseOptions.padding || y + oy > height - houseOptions.padding) continue
-      if (bt.rand() < (size <= houseOptions.criticalSize ? 1 : 1 / (size - houseOptions.criticalSize)) && !getVisited([x + ox, y + oy]) && !nearRiver([x + ox, y + oy])) {
+      if (y + oy < options.city.padding || y + oy > height - options.city.padding) continue
+      if (bt.rand() <= (size <= options.city.criticalSize ? 1 : 1 / (size - options.city.criticalSize)) && !getVisited([x + ox, y + oy]) && !nearRiver([x + ox, y + oy], options.city.riverDistance)) {
         queue.enqueue([x + ox, y + oy])
         setVisited([x + ox, y + oy])
       }
@@ -334,37 +325,35 @@ while (!queue.isEmpty()) {
   }
 }
 
+
+// Modified from https://github.com/indy256/convexhull-js
 function convexHull(points) {
-  points.sort(function (a, b) {
-    return a[0] != b[0] ? a[0] - b[0] : a[1] - b[1];
-  });
+  points.sort((a, b) => a[0] != b[0] ? a[0] - b[0] : a[1] - b[1]);
 
-  var n = points.length;
-  var hull = [];
+  const n = points.length;
+  const hull = [];
 
-  for (var i = 0; i < 2 * n; i++) {
-    var j = i < n ? i : 2 * n - 1 - i;
+  for (let i = 0; i < 2 * n; i++) {
+    let j = i < n ? i : 2 * n - 1 - i;
     while (hull.length >= 2 && removeMiddle(hull[hull.length - 2], hull[hull.length - 1], points[j]))
       hull.pop();
     hull.push(points[j]);
   }
 
-  hull.pop();
   return hull;
 }
-
 function removeMiddle(a, b, c) {
   var cross = (a[0] - b[0]) * (c[1] - b[1]) - (a[1] - b[1]) * (c[0] - b[0]);
   var dot = (a[0] - b[0]) * (c[0] - b[0]) + (a[1] - b[1]) * (c[1] - b[1]);
   return cross < 0 || cross == 0 && dot <= 0;
 }
+
 const cityHull = convexHull(cityPoints)
-cityHull.push(cityHull[0])
 
 function shuffle(array) {
   let currentIndex = array.length;
   while (currentIndex != 0) {
-    let randomIndex = Math.floor(bt.rand() * currentIndex);
+    const randomIndex = Math.floor(bt.rand() * currentIndex);
     currentIndex--;
     [array[currentIndex], array[randomIndex]] = [
       array[randomIndex], array[currentIndex]];
@@ -373,7 +362,7 @@ function shuffle(array) {
 
 function createRoad([x, y]) {
   const points = [[x, y]]
-  const sides = [[],[]]
+  const sides = [[], []]
   const offsets = [[5, 0], [-5, 0], [0, 8], [0, -8]]
   while (true) {
     shuffle(offsets)
@@ -386,47 +375,48 @@ function createRoad([x, y]) {
     }
     const last = (points.at(-1)[0] == x && points.at(-1)[1] == y)
 
-    if(points.length == 1){
-      if(points[0][0] == x){
-        sides[0].push([points.at(-1)[0]+Math.sign(points.at(-1)[1]-y)*0.5,points.at(-1)[1]])
-        sides[1].push([points.at(-1)[0]-Math.sign(points.at(-1)[1]-y)*0.5,points.at(-1)[1]])
+    if (points.length == 1) {
+      if (points[0][0] == x) {
+        sides[0].push([points.at(-1)[0] + Math.sign(points.at(-1)[1] - y) * 0.5, points.at(-1)[1]])
+        sides[1].push([points.at(-1)[0] - Math.sign(points.at(-1)[1] - y) * 0.5, points.at(-1)[1]])
       }
-      if(points[0][1] == y){
-        sides[0].push([points.at(-1)[0],points.at(-1)[1]-Math.sign(points.at(-1)[0]-x)*0.5])
-        sides[1].push([points.at(-1)[0],points.at(-1)[1]+Math.sign(points.at(-1)[0]-x)*0.5])
+      if (points[0][1] == y) {
+        sides[0].push([points.at(-1)[0], points.at(-1)[1] - Math.sign(points.at(-1)[0] - x) * 0.5])
+        sides[1].push([points.at(-1)[0], points.at(-1)[1] + Math.sign(points.at(-1)[0] - x) * 0.5])
       }
       points.push([x, y])
       continue
     }
-    
-    if(y == points.at(-1)[1] && y == points.at(-2)[1]){
-      sides[0].push([points.at(-1)[0],points.at(-1)[1]-Math.sign(points.at(-2)[0]-x)*0.5])
-      sides[1].push([points.at(-1)[0],points.at(-1)[1]+Math.sign(points.at(-2)[0]-x)*0.5])
+
+    if (y == points.at(-1)[1] && y == points.at(-2)[1]) {
+      sides[0].push([points.at(-1)[0], points.at(-1)[1] - Math.sign(points.at(-2)[0] - x) * 0.5])
+      sides[1].push([points.at(-1)[0], points.at(-1)[1] + Math.sign(points.at(-2)[0] - x) * 0.5])
     }
-    else if(x == points.at(-1)[0] && x == points.at(-2)[0] ){
-      sides[0].push([points.at(-1)[0]+Math.sign(points.at(-2)[1]-y)*0.5,points.at(-1)[1]])
-      sides[1].push([points.at(-1)[0]-Math.sign(points.at(-2)[1]-y)*0.5,points.at(-1)[1]])
-    } else if(x == points.at(-1)[0] && points.at(-1)[1] == points.at(-2)[1]){
-      sides[0].push([points.at(-1)[0]+Math.sign(points.at(-1)[1]-y)*0.5,points.at(-1)[1]-Math.sign(points.at(-2)[0]-x)*0.5])
-      sides[1].push([points.at(-1)[0]-Math.sign(points.at(-1)[1]-y)*0.5,points.at(-1)[1]+Math.sign(points.at(-2)[0]-x)*0.5])
-    } else if(y == points.at(-1)[1] && points.at(-1)[0] == points.at(-2)[0]){
-      sides[0].push([points.at(-1)[0]+Math.sign(points.at(-2)[1]-y)*0.5,points.at(-1)[1]-Math.sign(points.at(-1)[0]-x)*0.5])
-      sides[1].push([points.at(-1)[0]-Math.sign(points.at(-2)[1]-y)*0.5,points.at(-1)[1]+Math.sign(points.at(-1)[0]-x)*0.5])
+    else if (x == points.at(-1)[0] && x == points.at(-2)[0]) {
+      sides[0].push([points.at(-1)[0] + Math.sign(points.at(-2)[1] - y) * 0.5, points.at(-1)[1]])
+      sides[1].push([points.at(-1)[0] - Math.sign(points.at(-2)[1] - y) * 0.5, points.at(-1)[1]])
+    } else if (x == points.at(-1)[0] && points.at(-1)[1] == points.at(-2)[1]) {
+      sides[0].push([points.at(-1)[0] + Math.sign(points.at(-1)[1] - y) * 0.5, points.at(-1)[1] - Math.sign(points.at(-2)[0] - x) * 0.5])
+      sides[1].push([points.at(-1)[0] - Math.sign(points.at(-1)[1] - y) * 0.5, points.at(-1)[1] + Math.sign(points.at(-2)[0] - x) * 0.5])
+    } else if (y == points.at(-1)[1] && points.at(-1)[0] == points.at(-2)[0]) {
+      sides[0].push([points.at(-1)[0] + Math.sign(points.at(-2)[1] - y) * 0.5, points.at(-1)[1] - Math.sign(points.at(-1)[0] - x) * 0.5])
+      sides[1].push([points.at(-1)[0] - Math.sign(points.at(-2)[1] - y) * 0.5, points.at(-1)[1] + Math.sign(points.at(-1)[0] - x) * 0.5])
     }
-    
-    if(last) break;
+
+    if (last) break;
     points.push([x, y])
   }
   console.log(points)
-  return [sides,[points]]
+  return [sides, [points]]
 }
-let [sides,main] = (createRoad([firstHouse[0] - 1, firstHouse[1] - 1]))
-sides = [...sides, [sides[0][0],sides[1][0]], [sides[0].at(-1),sides[1].at(-1)] ]
-bt.resample(main,roadsOptions.dashSize)
+
+const [sides, center] = (createRoad([firstHouse[0] - 1, firstHouse[1] - 1]))
+const road = [...sides, [sides[0][0], sides[1][0]], [sides[0].at(-1), sides[1].at(-1)]]
+bt.resample(center, options.road.dashSize)
 let i = 0;
-bt.iteratePoints(main,(pt,t)=> (i++)%3==0 ? "BREAK": pt)
-drawLines(sides)
-drawLines(main)
+bt.iteratePoints(center, (pt, t) => (i++) % 3 == 0 ? "BREAK" : pt)
+drawLines(road)
+drawLines(center)
 
 function nearCity([x, y]) {
   for (let ox = -6; ox <= 6; ox++) {
@@ -436,6 +426,7 @@ function nearCity([x, y]) {
   }
   return false
 }
+
 const trees = []
 function onTree([x, y]) {
   return trees.some(([tx, ty]) => {
@@ -443,14 +434,14 @@ function onTree([x, y]) {
     return false
   })
 }
-for (let i = 0; i < treeOptions.N; i++) {
-  let x = bt.randInRange(treeOptions.paddingX, width - treeOptions.paddingX)
-  let y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
+for (let i = 0; i < options.tree.N; i++) {
+  let x = bt.randInRange(options.tree.paddingX, width - options.tree.paddingX)
+  let y = bt.randInRange(options.tree.paddingY, height - options.tree.paddingY)
   while (
-    nearCity([x, y]) || nearRiver([x, y]) || onTree([x, y])
+    nearCity([x, y]) || nearRiver([x, y], options.tree.riverDistance) || onTree([x, y])
   ) {
-    x = bt.randInRange(treeOptions.paddingX, width - treeOptions.paddingX)
-    y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
+    x = bt.randInRange(options.tree.paddingX, width - options.tree.paddingX)
+    y = bt.randInRange(options.tree.paddingY, height - options.tree.paddingY)
   }
   trees.push([x, y])
   drawLines(drawTreeOrBush([x, y]))
