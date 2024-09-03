@@ -11,7 +11,6 @@ You can set a seed by setting the `seed` constant
 
 - maxAngleTan: Tangent of maximum angle the river can make from the vertical axis
 - paddingX: Padding from the sides
-- paddingY: Padding from the top and bottom for the second and last control point respectively
 - maxWidth: Maximum width of the river
 - minWidth: Minimum width of the river
 
@@ -61,7 +60,6 @@ const options = {
   river: {
     maxAngleTan: 0.2,
     paddingX: 10,
-    paddingY: 5,
     maxWidth: 7,
     minWidth: 2
   },
@@ -100,14 +98,14 @@ const options = {
 
 function drawRiver() {
   const river = [[], []];
-  const { maxAngleTan, paddingX, paddingY, maxWidth, minWidth } = options.river;
+  const { maxAngleTan, paddingX, maxWidth, minWidth } = options.river;
   let rw = bt.randInRange(minWidth, maxWidth)
   let x = bt.randInRange(paddingX + rw, width - paddingX - rw)
   river[0].push([x - rw, 0])
   river[1].push([x + rw, 0])
   for (let y = 0; y < height;) {
     y += bt.randInRange(10, 22)
-    if (y > height - paddingY) y = height
+    if (y > height - 5) y = height
 
     rw += bt.randInRange(Math.max(-1, minWidth - rw), Math.min(1, maxWidth - rw))
 

@@ -10,7 +10,6 @@ You can set a seed by setting the `seed` constant
 
 - maxAngleTan: Tangent of maximum angle the river can make from the vertical axis
 - paddingX: Padding from the sides
-- paddingY: Padding from the top and bottom for the second and last control point respectively
 - maxWidth: Maximum width of the river
 - minWidth: Minimum width of the river
 
