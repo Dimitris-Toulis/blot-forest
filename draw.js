@@ -34,7 +34,8 @@ const riverOptions = {
   minWidth: 2
 }
 const treeOptions = {
-  N: 30,
+  N: 40,
+  bushReplaceChance: 0.3,
   paddingX: 5,
   paddingY: 15
 }
@@ -82,7 +83,39 @@ function drawRiver() {
   return [bt.catmullRom(river[0]), bt.catmullRom(river[1])]
 }
 
-function drawTree(x, y) {
+function drawTreeOrBush(pos){
+  return bt.rand()<treeOptions.bushReplaceChance ? drawBush(pos) : drawTree(pos)
+}
+
+function drawBush(pos){
+    const turtle = new bt.Turtle()
+    .down()
+  const curls = bt.randIntInRange(2, 3) * 2 + 1
+  for (let i = 0; i < curls; i++) {
+    turtle.arc(-360, -0.4)
+    turtle.up().step([1 / ((curls - 1)), i > curls / 2 - 1 ? -0.4 : 0.4]).down()
+  }
+  const cutter1 = turtle.lines().filter((_, i) => ((i) % 2 == 1)).map(a => a.map(b => [...b]))
+  const cutter1copy = cutter1.map(a => a.map(b => [...b]))
+  const cutter2 = turtle.lines().filter((_, i) => ((i) % 2 == 0)).map(a => a.map(b => [...b]))
+  let finalLines = [...bt.cover(cutter1, cutter2), ...bt.cover(cutter2, cutter1copy)]
+  bt.cover(finalLines, [ // hacky way to remove remaining inside bits
+    [
+      [0, 0],
+      [0.2, 0.4 * ((curls - 1) / 2) + 0.25],
+      [0.8, 0.4 * ((curls - 1) / 2) + 0.25],
+      [1, 0],
+      [0, 0]
+    ]
+  ])
+  finalLines.push([
+    [0, 0],
+    [1, 0]
+  ])
+  return bt.translate(finalLines, pos)
+}
+
+function drawTree(pos) {
   const turtle = new bt.Turtle()
     .down()
     .step([0, 4])
@@ -115,7 +148,7 @@ function drawTree(x, y) {
     [0, 4],
     [1, 4]
   ])
-  return bt.translate(finalLines, [x, y])
+  return bt.translate(finalLines, pos)
 }
 function drawFish([x, y], angle) {
   const turtle = new bt.Turtle()
@@ -285,7 +318,7 @@ while (!queue.isEmpty()) {
     cityPoints.push([x, y + 6])
     cityPoints.push([x + 3, y + 6])
   } else if (bt.rand() < houseOptions.treeReplaceChance) {
-    drawLines(drawTree(x+1, y))
+    drawLines(drawTreeOrBush([x+1, y]))
     cityPoints.push([x, y])
     cityPoints.push([x, y + 6])
   }
@@ -420,5 +453,5 @@ for (let i = 0; i < treeOptions.N; i++) {
     y = bt.randInRange(treeOptions.paddingY, height - treeOptions.paddingY)
   }
   trees.push([x, y])
-  drawLines(drawTree(x, y))
+  drawLines(drawTreeOrBush([x, y]))
 }
