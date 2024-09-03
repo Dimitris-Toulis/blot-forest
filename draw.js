@@ -65,6 +65,8 @@ const options = {
   }
 }
 
+// Object drawing functions
+
 function drawRiver() {
   const river = [[], []];
   const { maxAngleTan, paddingX, paddingY, maxWidth, minWidth } = options.river;
@@ -84,10 +86,6 @@ function drawRiver() {
     river[1].push([x + rw, y])
   }
   return [bt.catmullRom(river[0]), bt.catmullRom(river[1])]
-}
-
-function drawTreeOrBush(pos) {
-  return bt.rand() <= options.tree.bushReplaceChance ? drawBush(pos) : drawTree(pos)
 }
 
 function drawBush(pos) {
@@ -153,6 +151,10 @@ function drawTree(pos) {
   return bt.translate(finalLines, pos)
 }
 
+function drawTreeOrBush(pos) {
+  return bt.rand() <= options.tree.bushReplaceChance ? drawBush(pos) : drawTree(pos)
+}
+
 function drawFish(pos, angle) {
   const turtle = new bt.Turtle()
     .setAngle(angle - 270)
@@ -178,56 +180,6 @@ function drawFish(pos, angle) {
     .down()
     .arc(-360, -0.1)
   return bt.scale(bt.translate(turtle.lines(), pos), bt.randInRange(options.fish.minSize, options.fish.maxSize))
-}
-
-const river = drawRiver()
-drawLines(river)
-
-const riverCenter = river[0].map((p, i) => ([(p[0] + river[1][i][0]) / 2, (p[1] + river[1][i][1]) / 2]))
-let t = 0
-for (let i = 0; i < options.fish.N; i++) {
-  t += bt.randInRange(options.fish.padding, Math.min((1 - t) / (options.fish.N - i), 1 - t - options.fish.padding))
-  drawLines(drawFish(bt.getPoint([riverCenter], t), bt.getAngle([riverCenter], t) + bt.randInRange(-options.fish.angleVariation, options.fish.angleVariation)))
-}
-
-const closedRiver = [...river[0],
-...river[1].reverse(),
-river[0][0]
-]
-
-class Queue {
-  constructor() {
-    this._elements = [];
-    this._offset = 0;
-  }
-  enqueue(element) {
-    this._elements.push(element);
-    return this;
-  }
-  dequeue() {
-    if (this.isEmpty()) return null;
-
-    const first = this.front();
-    this._offset += 1;
-
-    if (this._offset * 2 < this._elements.length) return first;
-
-    this._elements = this._elements.slice(this._offset);
-    this._offset = 0;
-    return first;
-  }
-  front() {
-    return this.size() > 0 ? this._elements[this._offset] : null;
-  }
-  back() {
-    return this.size() > 0 ? this._elements[this._elements.length - 1] : null;
-  }
-  size() {
-    return this._elements.length - this._offset;
-  }
-  isEmpty() {
-    return this.size() === 0;
-  }
 }
 
 function drawHouse(pos) {
@@ -272,92 +224,6 @@ function drawHouse(pos) {
     .right(90)
     .forward(1)
   return bt.translate(turtle.lines(), pos)
-}
-
-let size = 1
-const queue = new Queue()
-const visited = []
-const setVisited = ([x, y]) => visited[x + width * y] = true
-const getVisited = ([x, y]) => visited[x + width * y]
-
-function randWithCond(min, max, cond) {
-  let x = bt.randIntInRange(min, max)
-  let y = bt.randIntInRange(min, max)
-  while (!cond(x, y)) {
-    x = bt.randIntInRange(min, max)
-    y = bt.randIntInRange(min, max)
-  }
-  return [x, y]
-}
-function nearRiver([x, y], dist) {
-  for (let ox = -dist; ox <= dist; ox++) {
-    for (let oy = -dist; oy <= dist; oy++) {
-      if (bt.pointInside([closedRiver], [x + ox, y + oy])) return true
-    }
-  }
-  return false
-}
-const firstHouse = randWithCond(options.city.padding, width - options.city.padding, (x, y) => !nearRiver([x, y], options.city.firstRiverDistance))
-queue.enqueue(firstHouse)
-setVisited(firstHouse)
-
-const cityPoints = []
-
-while (!queue.isEmpty()) {
-  const [x, y] = queue.dequeue()
-  if (bt.rand() < (1 - options.city.skipChance)) {
-    drawLines(drawHouse([x, y]))
-    size++
-    cityPoints.push([x, y], [x + 3, y], [x, y + 6], [x + 3, y + 6])
-  } else if (bt.rand() < options.city.treeReplaceChance) {
-    drawLines(drawTreeOrBush([x + 1, y]))
-    cityPoints.push([x, y], [x, y + 6])
-  }
-  for (let ox = -5; ox <= 5; ox += 5) {
-    if (x + ox < options.city.padding || x + ox > width - options.city.padding) continue
-    for (let oy = -8; oy <= 8; oy += 8) {
-      if (y + oy < options.city.padding || y + oy > height - options.city.padding) continue
-      if (bt.rand() <= (size <= options.city.criticalSize ? 1 : 1 / (size - options.city.criticalSize)) && !getVisited([x + ox, y + oy]) && !nearRiver([x + ox, y + oy], options.city.riverDistance)) {
-        queue.enqueue([x + ox, y + oy])
-        setVisited([x + ox, y + oy])
-      }
-    }
-  }
-}
-
-
-// Modified from https://github.com/indy256/convexhull-js
-function convexHull(points) {
-  points.sort((a, b) => a[0] != b[0] ? a[0] - b[0] : a[1] - b[1]);
-
-  const n = points.length;
-  const hull = [];
-
-  for (let i = 0; i < 2 * n; i++) {
-    let j = i < n ? i : 2 * n - 1 - i;
-    while (hull.length >= 2 && removeMiddle(hull[hull.length - 2], hull[hull.length - 1], points[j]))
-      hull.pop();
-    hull.push(points[j]);
-  }
-
-  return hull;
-}
-function removeMiddle(a, b, c) {
-  var cross = (a[0] - b[0]) * (c[1] - b[1]) - (a[1] - b[1]) * (c[0] - b[0]);
-  var dot = (a[0] - b[0]) * (c[0] - b[0]) + (a[1] - b[1]) * (c[1] - b[1]);
-  return cross < 0 || cross == 0 && dot <= 0;
-}
-
-const cityHull = convexHull(cityPoints)
-
-function shuffle(array) {
-  let currentIndex = array.length;
-  while (currentIndex != 0) {
-    const randomIndex = Math.floor(bt.rand() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex], array[currentIndex]];
-  }
 }
 
 function createRoad([x, y]) {
@@ -406,17 +272,162 @@ function createRoad([x, y]) {
     if (last) break;
     points.push([x, y])
   }
-  console.log(points)
-  return [sides, [points]]
+  const road = [...sides, [sides[0][0], sides[1][0]], [sides[0].at(-1), sides[1].at(-1)]]
+  const center = [points]
+  bt.resample(center, options.road.dashSize)
+  let i = 0;
+  bt.iteratePoints(center, (pt, _) => (i++) % 3 == 0 ? "BREAK" : pt)
+  return [...road, ...center]
 }
 
-const [sides, center] = (createRoad([firstHouse[0] - 1, firstHouse[1] - 1]))
-const road = [...sides, [sides[0][0], sides[1][0]], [sides[0].at(-1), sides[1].at(-1)]]
-bt.resample(center, options.road.dashSize)
-let i = 0;
-bt.iteratePoints(center, (pt, t) => (i++) % 3 == 0 ? "BREAK" : pt)
-drawLines(road)
-drawLines(center)
+// Helpers
+
+class Queue {
+  constructor() {
+    this._elements = [];
+    this._offset = 0;
+  }
+  enqueue(element) {
+    this._elements.push(element);
+    return this;
+  }
+  dequeue() {
+    if (this.isEmpty()) return null;
+
+    const first = this.front();
+    this._offset += 1;
+
+    if (this._offset * 2 < this._elements.length) return first;
+
+    this._elements = this._elements.slice(this._offset);
+    this._offset = 0;
+    return first;
+  }
+  front() {
+    return this.size() > 0 ? this._elements[this._offset] : null;
+  }
+  back() {
+    return this.size() > 0 ? this._elements[this._elements.length - 1] : null;
+  }
+  size() {
+    return this._elements.length - this._offset;
+  }
+  isEmpty() {
+    return this.size() === 0;
+  }
+}
+
+function randWithCond(min, max, cond) {
+  let x = bt.randIntInRange(min, max)
+  let y = bt.randIntInRange(min, max)
+  while (!cond(x, y)) {
+    x = bt.randIntInRange(min, max)
+    y = bt.randIntInRange(min, max)
+  }
+  return [x, y]
+}
+
+function shuffle(array) {
+  let currentIndex = array.length;
+  while (currentIndex != 0) {
+    const randomIndex = Math.floor(bt.rand() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+}
+
+// Modified from https://github.com/indy256/convexhull-js
+function convexHull(points) {
+  points.sort((a, b) => a[0] != b[0] ? a[0] - b[0] : a[1] - b[1]);
+
+  const n = points.length;
+  const hull = [];
+
+  for (let i = 0; i < 2 * n; i++) {
+    let j = i < n ? i : 2 * n - 1 - i;
+    while (hull.length >= 2 && removeMiddle(hull[hull.length - 2], hull[hull.length - 1], points[j]))
+      hull.pop();
+    hull.push(points[j]);
+  }
+
+  return hull;
+}
+function removeMiddle(a, b, c) {
+  var cross = (a[0] - b[0]) * (c[1] - b[1]) - (a[1] - b[1]) * (c[0] - b[0]);
+  var dot = (a[0] - b[0]) * (c[0] - b[0]) + (a[1] - b[1]) * (c[1] - b[1]);
+  return cross < 0 || cross == 0 && dot <= 0;
+}
+
+// Drawing code
+
+// River
+const river = drawRiver()
+
+const riverCenter = river[0].map((p, i) => ([(p[0] + river[1][i][0]) / 2, (p[1] + river[1][i][1]) / 2]))
+const closedRiver = [...river[0], ...river[1].reverse(), river[0][0]]
+
+drawLines(river)
+
+// Fish
+let t = 0
+for (let i = 0; i < options.fish.N; i++) {
+  t += bt.randInRange(options.fish.padding, Math.min((1 - t) / (options.fish.N - i), 1 - t - options.fish.padding))
+  drawLines(drawFish(bt.getPoint([riverCenter], t), bt.getAngle([riverCenter], t) + bt.randInRange(-options.fish.angleVariation, options.fish.angleVariation)))
+}
+
+
+// City
+
+function nearRiver([x, y], dist) {
+  for (let ox = -dist; ox <= dist; ox++) {
+    for (let oy = -dist; oy <= dist; oy++) {
+      if (bt.pointInside([closedRiver], [x + ox, y + oy])) return true
+    }
+  }
+  return false
+}
+
+let size = 0
+const queue = new Queue()
+const visited = []
+const setVisited = ([x, y]) => visited[x + width * y] = true
+const getVisited = ([x, y]) => visited[x + width * y]
+
+const firstHouse = randWithCond(options.city.padding, width - options.city.padding, (x, y) => !nearRiver([x, y], options.city.firstRiverDistance))
+queue.enqueue(firstHouse)
+setVisited(firstHouse)
+
+const cityPoints = []
+
+while (!queue.isEmpty()) {
+  const [x, y] = queue.dequeue()
+  if (bt.rand() < (1 - options.city.skipChance)) {
+    drawLines(drawHouse([x, y]))
+    size++
+    cityPoints.push([x, y], [x + 3, y], [x, y + 6], [x + 3, y + 6])
+  } else if (bt.rand() < options.city.treeReplaceChance) {
+    drawLines(drawTreeOrBush([x + 1, y]))
+    cityPoints.push([x, y], [x, y + 6])
+  }
+  for (let ox = -5; ox <= 5; ox += 5) {
+    if (x + ox < options.city.padding || x + ox > width - options.city.padding) continue
+    for (let oy = -8; oy <= 8; oy += 8) {
+      if (y + oy < options.city.padding || y + oy > height - options.city.padding) continue
+      if (bt.rand() <= (size <= options.city.criticalSize ? 1 : 1 / (size - options.city.criticalSize)) && !getVisited([x + ox, y + oy]) && !nearRiver([x + ox, y + oy], options.city.riverDistance)) {
+        queue.enqueue([x + ox, y + oy])
+        setVisited([x + ox, y + oy])
+      }
+    }
+  }
+}
+
+const cityHull = convexHull(cityPoints)
+
+// Road
+drawLines(createRoad([firstHouse[0] - 1, firstHouse[1] - 1]))
+
+// Road
 
 function nearCity([x, y]) {
   for (let ox = -6; ox <= 6; ox++) {
@@ -434,6 +445,7 @@ function onTree([x, y]) {
     return false
   })
 }
+
 for (let i = 0; i < options.tree.N; i++) {
   let x = bt.randInRange(options.tree.paddingX, width - options.tree.paddingX)
   let y = bt.randInRange(options.tree.paddingY, height - options.tree.paddingY)
