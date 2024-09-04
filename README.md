@@ -1,6 +1,6 @@
 # Blot Map
 
-A blot program that generates a map with a river, trees and a city with houses, trees and a road
+A blot program that generates a map with a river, trees and a city with houses, trees and roads
 
 ## Configuration
 

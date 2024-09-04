@@ -1,7 +1,7 @@
 /*
 # Blot Map
 
-A blot program that generates a map with a river, trees and a city with houses, trees and a road
+A blot program that generates a map with a river, trees and a city with houses, trees and roads
 
 ## Configuration
 
@@ -82,7 +82,7 @@ const options = {
     windowChance: 0.2
   },
   city: {
-    criticalSize: 15,
+    criticalSize: 35,
     firstRiverDistance: 10,
     padding: 8,
     riverDistance: 6,
@@ -255,6 +255,7 @@ function drawHouse(pos) {
   return bt.translate(turtle.lines(), pos)
 }
 
+const allRoadPoints = []
 function createRoad([x, y]) {
   const points = [[x, y]]
   const sides = [[], []]
@@ -263,7 +264,9 @@ function createRoad([x, y]) {
     shuffle(offsets)
     for (let i = 0; i < 4; i++) {
       if (points.findIndex((a) => (a[0] == x + offsets[i][0] && a[1] == y + offsets[i][1])) != -1 ||
-        !bt.pointInside([cityHull], [x + offsets[i][0], y + offsets[i][1]])) continue
+        allRoadPoints.findIndex((a) => (a[0] == x + offsets[i][0] && a[1] == y + offsets[i][1])) != -1 ||
+        !bt.pointInside([cityHull], [x + offsets[i][0], y + offsets[i][1]]) ||
+        nearRiver([x + offsets[i][0], y + offsets[i][1]], 5)) continue
       x += offsets[i][0]
       y += offsets[i][1]
       break
@@ -301,6 +304,7 @@ function createRoad([x, y]) {
     if (last) break;
     points.push([x, y])
   }
+  allRoadPoints.push(...points)
   const road = [...sides, [sides[0][0], sides[1][0]], [sides[0].at(-1), sides[1].at(-1)]]
   const center = [points]
   bt.resample(center, options.road.dashSize)
@@ -428,6 +432,7 @@ queue.enqueue(firstHouse)
 setVisited(firstHouse)
 
 const cityPoints = []
+const roadStarts = []
 
 while (!queue.isEmpty()) {
   const [x, y] = queue.dequeue()
@@ -435,6 +440,7 @@ while (!queue.isEmpty()) {
     drawLines(drawHouse([x, y]))
     size++
     cityPoints.push([x, y], [x + 3, y], [x, y + 6], [x + 3, y + 6])
+    roadStarts.push([x - 1, y - 1])
   } else if (bt.rand() < options.city.treeReplaceChance) {
     drawLines(drawTreeOrBush([x + 1, y]))
     cityPoints.push([x, y], [x, y + 6])
@@ -455,8 +461,13 @@ const cityHull = convexHull(cityPoints)
 
 // Road
 drawLines(createRoad([firstHouse[0] - 1, firstHouse[1] - 1]))
+let roadStart = roadStarts[bt.randIntInRange(1, roadStarts.length - 1)]
+while (allRoadPoints.findIndex((a) => (a[0] == roadStart[0] && a[1] == roadStart[1])) != -1) {
+  roadStart = roadStarts[bt.randIntInRange(1, roadStarts.length - 1)]
+}
+drawLines(createRoad(roadStart))
 
-// Road
+// Trees
 
 function nearCity([x, y]) {
   for (let ox = -6; ox <= 6; ox++) {
