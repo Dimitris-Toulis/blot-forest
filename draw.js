@@ -64,7 +64,7 @@ const options = {
     minWidth: 2
   },
   tree: {
-    N: 40,
+    N: 50,
     bushReplaceChance: 0.3,
     paddingX: 5,
     paddingY: 15,
@@ -117,71 +117,48 @@ function drawRiver() {
   return [bt.catmullRom(river[0]), bt.catmullRom(river[1])]
 }
 
-function drawBush(pos) {
+function drawBush(pos, base) {
   const turtle = new bt.Turtle()
-  const curls = bt.randIntInRange(2, 3) * 2 + 1
-  for (let i = 0; i < curls; i++) {
-    turtle.arc(-360, -0.4)
-    turtle.up().step([1 / ((curls - 1)), i > curls / 2 - 1 ? -0.4 : 0.4]).down()
-  }
-  const cutter1 = turtle.lines().filter((_, i) => ((i) % 2 == 1)).map(a => a.map(b => [...b]))
-  const cutter1copy = cutter1.map(a => a.map(b => [...b]))
-  const cutter2 = turtle.lines().filter((_, i) => ((i) % 2 == 0)).map(a => a.map(b => [...b]))
-  let finalLines = [...bt.cover(cutter1, cutter2), ...bt.cover(cutter2, cutter1copy)]
-  bt.cover(finalLines, [ // hacky way to remove remaining inside bits
-    [
-      [0, 0],
-      [0.2, 0.4 * ((curls - 1) / 2) + 0.25],
-      [0.8, 0.4 * ((curls - 1) / 2) + 0.25],
-      [1, 0],
-      [0, 0]
-    ]
-  ])
-  finalLines.push([
-    [0, 0],
-    [1, 0]
-  ])
-  return bt.translate(finalLines, pos)
+  turtle.up()
+  turtle.forward(base)
+  turtle.down()
+  turtle.left(45)
+  turtle.arc(270, base / (Math.sqrt(2)))
+  turtle.apply(turtle => {
+    const pls = turtle.path;
+    bt.resample(pls, .2);
+    bt.iteratePoints(pls, (pt, t) => {
+      const [x, y] = pt;
+      const mag = Math.sin(t * 7 * Math.PI * 2) * (bt.rand() / 8);
+      const norm = bt.getNormal(pls, t);
+
+      return [
+        x + norm[0] * mag,
+        y + norm[1] * mag
+      ]
+    })
+  })
+  turtle.right(135)
+  turtle.forward(-base)
+  return bt.translate([bt.catmullRom(turtle.lines()[0])], pos)
 }
 
 function drawTree(pos) {
+  const height = bt.randInRange(2, 5)
   const turtle = new bt.Turtle()
     .down()
-    .step([0, 4])
-    .step([0, -4])
+    .step([0, height])
+    .step([0, -height])
     .step([1, 0])
-    .step([0, 4])
+    .step([0, height])
     .up()
     .step([-1, 0])
     .down()
-  const curls = bt.randIntInRange(1, 3) * 2 + 1
-  for (let i = 0; i < curls; i++) {
-    turtle.arc(-360, -0.4)
-    turtle.up().step([1 / ((curls - 1)), i > curls / 2 - 1 ? -0.4 : 0.4]).down()
-  }
-  const cutter1 = turtle.lines().filter((_, i) => i != 0 && (i - 1) % 2 == 1).map(a => a.map(b => [...b]))
-  const cutter1copy = cutter1.map(a => a.map(b => [...b]))
-  const cutter2 = turtle.lines().filter((_, i) => i != 0 && (i - 1) % 2 == 0).map(a => a.map(b => [...b]))
-  let finalLines = [turtle.lines()[0]]
-  finalLines = [...finalLines, ...bt.cover(cutter1, cutter2), ...bt.cover(cutter2, cutter1copy)]
-  bt.cover(finalLines, [ // hacky way to remove remaining inside bits
-    [
-      [0, 4],
-      [0.2, 4 + 0.4 * ((curls - 1) / 2) + 0.25],
-      [0.8, 4 + 0.4 * ((curls - 1) / 2) + 0.25],
-      [1, 4],
-      [0, 4]
-    ]
-  ])
-  finalLines.push([
-    [0, 4],
-    [1, 4]
-  ])
-  return bt.translate(finalLines, pos)
+  return bt.translate([turtle.lines()[0], ...drawBush([0, height], 1)], pos)
 }
 
 function drawTreeOrBush(pos) {
-  return bt.rand() <= options.tree.bushReplaceChance ? drawBush(pos) : drawTree(pos)
+  return bt.rand() <= options.tree.bushReplaceChance ? drawBush([pos[0] + 0.5, pos[1]], 2) : drawTree([pos[0] + 1, pos[1]])
 }
 
 function drawFish(pos, angle) {
@@ -442,7 +419,7 @@ while (!queue.isEmpty()) {
     cityPoints.push([x, y], [x + 3, y], [x, y + 6], [x + 3, y + 6])
     roadStarts.push([x - 1, y - 1])
   } else if (bt.rand() < options.city.treeReplaceChance) {
-    drawLines(drawTreeOrBush([x + 1, y]))
+    drawLines(drawTreeOrBush([x, y]))
     cityPoints.push([x, y], [x, y + 6])
   }
   for (let ox = -5; ox <= 5; ox += 5) {
@@ -481,7 +458,7 @@ function nearCity([x, y]) {
 const trees = []
 function onTree([x, y]) {
   return trees.some(([tx, ty]) => {
-    if (Math.abs(y - ty) <= 4 && Math.abs(x - tx) <= 2) return true
+    if (Math.abs(y - ty) <= 6 && Math.abs(x - tx) <= 2) return true
     return false
   })
 }
